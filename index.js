@@ -22,10 +22,10 @@ app.use("/alki", getjobsRout);
 app.use("/alki", peoplesearch);
 app.use("/alki", jobDetail);
 app.use(express.static("uploads"));
-
+const PORT = process.env.PORT || 3001;
 db.sequelize.sync().then(() => {
   console.log("syn sucessful");
-  app.listen(3001, "0.0.0.0", () => {
+  app.listen(PORT, () => {
     console.log("server listeening at 3001");
   });
 });
