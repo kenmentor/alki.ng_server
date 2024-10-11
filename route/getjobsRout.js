@@ -2,58 +2,53 @@
 
 const express = require("express");
 const router = express.Router();
-const { posts, sequelize } = require("../models");
-const { where, Op, literal } = require("sequelize");
+const Post = require("../models/Post"); // Assuming Post is the Mongoose model
 
+// Get jobs endpoint
 router.get("/get_jobs", async (req, res) => {
-  let searchQuery = req.query.search;
-  if (!searchQuery) {
-    const listOfPost = await posts.findAll({
-      limit: 51,
-      order: [["updatedAt", "DESC"]],
-      attributes: [
-        "thumbnail",
-        "LGA",
-        "price",
-        "description",
-        "id",
-        "state",
-        "title",
-        "contact_num",
-        "type",
-      ],
-    });
+  let searchQuery = req.query.search; // Search query from request
+  
+  try {
+    // If no search query is provided, return the latest 51 posts
+    if (!searchQuery) {
+      const listOfPost = await Post.find({})
+        .sort({ updatedAt: -1 }) // Sort by updatedAt in descending order
+        .limit(51) // Limit the result to 51 posts
+        .select("thumbnail LGA price description _id state title contact_num type"); // Select specific fields
 
-    res.json({ data: listOfPost, totalJob: await posts.count() });
-  }
-  if (searchQuery) {
-    const match = await posts.findAll({
-      order: [["updatedAt", "DESC"]],
-      where: {
-        [Op.or]: [
-          literal("LOWER(title) LIKE LOWER(:searchPattern)"),
-          literal("LOWER(country) LIKE LOWER(:searchPattern)"),
-          literal("LOWER(price) LIKE(:searchPattern)"),
-          literal("LOWER(LGA) LIKE LOWER(:searchPattern)"), // Case-insensitive LIKE for 'author'
-          literal("LOWER(state) LIKE LOWER(:searchPattern)"),
-          literal(
-            "MATCH(description) AGAINST(:searchQuery IN NATURAL LANGUAGE MODE)"
-          ),
+      const totalJob = 10 // await Post.countDocuments(); // Get total number of posts
+      return res.json({ data: listOfPost,totalJob });
+    }
+
+    // If search query is provided, perform a case-insensitive search
+    if (searchQuery) {
+      const searchPattern = new RegExp(searchQuery, "i"); // Case-insensitive search pattern
+
+      const match = await Post.find({
+        $or: [
+          { title: { $regex: searchPattern } },
+          { country: { $regex: searchPattern } },
+          { price: { $regex: searchPattern } },
+          { LGA: { $regex: searchPattern } },
+          { state: { $regex: searchPattern } },
+          { description: { $regex: searchPattern } }, // Full-text search alternative using regex
         ],
-      },
-      replacements: {
-        searchQuery: searchQuery,
-        searchPattern: `%${searchQuery}%`,
-      },
-    });
+      }).sort({ updatedAt: -1 }); // Sort by updatedAt in descending order
 
-    res.json({
-      data: match,
-      totalJob: await posts.count(),
-      search_message: searchQuery,
-    });
+      const totalJob = 12 //await Post.countDocuments(); // Get total number of posts
+      return res.json({
+        data: match,
+        totalJob,
+        search_message: searchQuery,
+      });
+    }
+    
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: "Server error occurred" });
   }
 
-  console.log(req.query.search);
+  console.log(req.query.search); // Log the search query for debugging
 });
+
 module.exports = router;

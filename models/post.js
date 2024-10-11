@@ -1,101 +1,62 @@
 /** @format */
 
-const { QueryInterface } = require("sequelize");
-const { defaultValueSchemable } = require("sequelize/lib/utils");
-/*
- thumnail:'',
-    title: "",
-    description: "",
-    contact_num:'080',
-    price: 0,
-    state: "",
-    LGA: "",
-    country: "",
-    professional_job: false,
-    casual_job: false,
-    remote_job: false,
-    type: false,
-  });
-*/
-module.exports = (sequelize, DataType, queryInterface) => {
-  const post = sequelize.define("posts", {
+const mongoose = require("mongoose");
+
+const userSchema = new mongoose.Schema(
+  {
     thumbnail: {
-      type: DataType.STRING,
-      allowNull: true,
-      defaultValue: "jujgugugugug",
+      type: String,
+      default: "jujgugugugug",
     },
     title: {
-      type: DataType.STRING,
-      allowNull: false,
+      type: String,
+      required: true,
     },
     description: {
-      type: DataType.TEXT,
-      allowNull: false,
+      type: String,
+      required: true,
     },
     contact_num: {
-      type: DataType.STRING,
-      allowNull: false,
+      type: String,
+      required: true,
     },
     price: {
-      type: DataType.STRING,
-      allowNull: false,
+      type: String,
+      required: true,
     },
     state: {
-      type: DataType.STRING,
-      allowNull: false,
+      type: String,
+      required: true,
     },
     LGA: {
-      type: DataType.STRING,
-      allowNull: false,
+      type: String,
+      required: true,
     },
-
     country: {
-      type: DataType.STRING,
-      allowNull: false,
+      type: String,
+      required: true,
     },
     lon: {
-      type: DataType.STRING,
-      allowNull: true,
-      defaultValue: "3333333",
+      type: String,
+      default: "3333333",
     },
     lat: {
-      type: DataType.STRING,
-      allowNull: true,
-      defaultValue: "3333333",
+      type: String,
+      default: "3333333",
     },
     type: {
-      type: DataType.STRING,
-      allowNull: false,
+      type: String,
+      required: true,
     },
-
     username: {
-      type: DataType.STRING,
-      allowNull: true,
-      defaultValue: "mentor",
+      type: String,
+      default: "mentor",
     },
-  });
-  (async () => {
-    try {
-      console.log("Connection has been established successfully.");
+  },
+  {
+    timestamps: true,
+  }
+);
 
-      // Define the raw SQL query to create a full-text index
-      const createFullTextIndexQuery = `
-      ALTER TABLE POSTS
-      ADD FULLTEXT(DESCRIPTION);
-    `;
-
-      // Execute the query
-      await sequelize.query(createFullTextIndexQuery);
-      console.log("Full-text index created successfully.");
-
-      // Close the connection
-    } catch (error) {
-      console.error(
-        "Unable to connect to the database or execute query:",
-        error
-      );
-    }
-  })();
-
-  return post;
-};
+const Post = mongoose.model("Post", userSchema);
+module.exports = Post;

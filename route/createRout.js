@@ -1,14 +1,14 @@
 /** @format */
 const express = require("express");
 const router = express.Router();
-const { posts } = require("../models");
-const { where, Op, literal } = require("sequelize");
 const multer = require("multer");
 const cloudinary = require("cloudinary").v2;
 const streamifier = require("streamifier");
 const dotenv = require("dotenv");
+const Post = require("../models/Post"); // MongoDB Post model using Mongoose
 dotenv.config();
 
+// Cloudinary configuration
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -16,9 +16,25 @@ cloudinary.config({
   timeout: 90000,
 });
 
+// Set up multer storage in memory
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
+// Helper function to upload file buffer to Cloudinary
+const uploadFromBuffer = (fileBuffer) => {
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream((error, result) => {
+      if (result) {
+        resolve(result);
+      } else {
+        reject(error);
+      }
+    });
+    streamifier.createReadStream(fileBuffer).pipe(uploadStream);
+  });
+};
+
+// Route to post jobs
 router.post("/post_jobs", upload.single("file"), async (req, res) => {
   const {
     title,
@@ -35,71 +51,49 @@ router.post("/post_jobs", upload.single("file"), async (req, res) => {
     lat,
     lon,
   } = req.body;
+
   const file = req.file;
 
   try {
+    let imageUrl = null; // Default image URL to null
+
+    // If a file is provided, upload it to Cloudinary
     if (file) {
-      // Upload the file to Cloudinary
-      const uploadFromBuffer = (fileBuffer) => {
-        return new Promise((resolve, reject) => {
-          const uploadStream = cloudinary.uploader.upload_stream(
-            (error, result) => {
-              if (result) {
-                resolve(result);
-              } else {
-                reject(error);
-              }
-            }
-          );
-          streamifier.createReadStream(fileBuffer).pipe(uploadStream);
-        });
-      };
-
-      const result = await uploadFromBuffer(file.buffer); // Await the upload result
-      const imageUrl = result.secure_url;
-
-      // Create the post with the uploaded image URL
-      await posts.create({
-        thumbnail: imageUrl,
-        title,
-        description,
-        contact_num,
-        price,
-        state,
-        LGA,
-        country,
-        lat,
-        lon,
-        professional_job,
-        casual_job,
-        remote_job,
-        type,
-      });
-
-      res.json({ message: "Post and image uploaded successfully", imageUrl });
-    } else {
-      // No file uploaded, create the post without an image
-      await posts.create({
-        thumbnail: null,
-        title,
-        description,
-        contact_num,
-        price,
-        state,
-        LGA,
-        country,
-        lat,
-        lon,
-        type,
-      });
-
-      res.json({
-        message: "Post created successfully, but no image was uploaded",
-      });
+      const result = await uploadFromBuffer(file.buffer);
+      imageUrl = result.secure_url;
     }
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ message: "An error occurred", error: e });
+
+    // Create the post in MongoDB using Mongoose
+    const newPost = new Post({
+      thumbnail: imageUrl,
+      title,
+      description,
+      contact_num,
+      price,
+      state,
+      LGA,
+      country,
+      lat,
+      lon,
+      professional_job,
+      casual_job,
+      remote_job,
+      type,
+    });
+
+    await newPost.save(); // Save the post to the database
+
+    // Send response back
+    res.json({
+      message: file
+        ? "Post and image uploaded successfully"
+        : "Post created successfully, no image uploaded",
+      post: newPost,
+      imageUrl,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "An error occurred", error });
   }
 });
 
