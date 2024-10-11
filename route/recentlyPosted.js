@@ -13,7 +13,7 @@ router.get("/get_posted_recently", async (req, res) => {
       // Using Mongoose's `find` and `regex` to search for posts
       let recent_jobs = await Post.find({
         $or: [
-          /*{ title: { $regex: title || "", $options: "i" } }*/ // Case-insensitive regex for title
+          { title: { $regex: title || "", $options: "i" } }// Case-insensitive regex for title
           { state: { $regex: state || "", $options: "i" } }, // Case-insensitive regex for state
           { _id: { $ne: id || "1" } }, // Exclude the post with the specified id
         ],
